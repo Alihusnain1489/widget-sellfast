@@ -1,0 +1,365 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+
+
+model User {
+  id                  String               @id @default(cuid()) @map("_id")
+  username            String?              @unique
+  email               String?              @unique
+  phone               String?              @unique
+  password            String?
+  name                String
+  address             String?
+  isActive            Boolean              @default(true)
+  role                UserRole             @default(USER)
+  customRoleId        String?
+  permissions         String?
+  provider            String?
+  providerId          String?
+  image               String?
+  phoneVerified       Boolean              @default(false)
+  emailVerified       Boolean              @default(false)
+  coins               Float                @default(0)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  bids                Bid[]
+  contactForms        ContactForm[]
+  deals               Deal[]
+  listings            Listing[]
+  otps                OTP[]
+  passwordResetTokens PasswordResetToken[]
+  customRole          CustomRole?          @relation(fields: [customRoleId], references: [id])
+  coinTransactions    CoinTransaction[]
+  chatsAsBuyer        Chat[]               @relation("BuyerChats")
+  chatsAsSeller       Chat[]               @relation("SellerChats")
+  chatMessages        ChatMessage[]
+}
+
+model ItemCategory {
+  id          String                 @id @default(cuid()) @map("_id")
+  name        String                 @unique
+  description String?
+  icon        String?
+  createdAt   DateTime               @default(now())
+  items       Item[]
+  specifications CategorySpecification[]
+  brandSpecifications BrandSpecification[]
+}
+
+model Company {
+  id         String        @id @default(cuid()) @map("_id")
+  name       String        @unique
+  slug       String?       @unique
+  icon       String?
+  logoPath   String?
+  logoFormat String?
+  origin     String?
+  website    String?
+  notes      String?
+  createdAt  DateTime      @default(now())
+  items      ItemCompany[]
+  listings   Listing[]
+  specifications BrandSpecification[]
+}
+
+model Item {
+  id             String          @id @default(cuid()) @map("_id")
+  name           String          @unique
+  categoryId     String
+  icon           String?
+  createdAt      DateTime        @default(now())
+  category       ItemCategory    @relation(fields: [categoryId], references: [id])
+  companies      ItemCompany[]
+  listings       Listing[]
+  specifications Specification[]
+}
+
+model ItemCompany {
+  id        String  @id @default(cuid()) @map("_id")
+  itemId    String
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+  item      Item    @relation(fields: [itemId], references: [id])
+
+  @@unique([itemId, companyId])
+}
+
+model Specification {
+  id        String                 @id @default(cuid()) @map("_id")
+  name      String
+  valueType String
+  options   String?
+  icon      String?
+  order     Int?
+  itemId    String
+  createdAt DateTime               @default(now())
+  listings  ListingSpecification[]
+  item      Item                   @relation(fields: [itemId], references: [id])
+
+  @@unique([name, itemId])
+}
+
+model CategorySpecification {
+  id          String       @id @default(cuid()) @map("_id")
+  categoryId  String
+  name        String
+  valueType   String
+  options     String?
+  icon        String?
+  order       Int?
+  isRequired  Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  category    ItemCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([name, categoryId])
+  @@index([categoryId])
+}
+
+model BrandSpecification {
+  id          String   @id @default(cuid()) @map("_id")
+  companyId   String
+  categoryId  String?
+  name        String
+  valueType   String
+  options     String?
+  icon        String?
+  order       Int?
+  isRequired  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category    ItemCategory? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([name, companyId, categoryId])
+  @@index([companyId])
+  @@index([categoryId])
+}
+
+model Listing {
+  id             String                 @id @default(cuid()) @map("_id")
+  userId         String
+  itemId         String
+  companyId      String
+  title          String
+  description    String
+  price          Float
+  address        String
+  latitude       Float?
+  longitude      Float?
+  status         ListingStatus          @default(PENDING)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  soldAt         DateTime?
+  stepProgress   Int?
+  tempData       Json?
+  bids           Bid[]
+  deals          Deal[]
+  chats          Chat[]                 // Add this line
+  company        Company                @relation(fields: [companyId], references: [id])
+  item           Item                   @relation(fields: [itemId], references: [id])
+  user           User                   @relation(fields: [userId], references: [id])
+  specifications ListingSpecification[]
+}
+
+model ListingSpecification {
+  id              String        @id @default(cuid()) @map("_id")
+  listingId       String
+  specificationId String
+  value           String
+  createdAt       DateTime      @default(now())
+  specification   Specification @relation(fields: [specificationId], references: [id])
+  listing         Listing       @relation(fields: [listingId], references: [id])
+}
+
+model ContactForm {
+  id        String   @id @default(cuid()) @map("_id")
+  name      String
+  email     String
+  subject   String
+  message   String
+  userId    String?
+  createdAt DateTime @default(now())
+  read      Boolean  @default(false)
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model OTP {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String?
+  phone     String?
+  email     String?
+  code      String
+  type      String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([phone])
+  @@index([email])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid()) @map("_id")
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model CustomRole {
+  id          String   @id @default(cuid()) @map("_id")
+  name        String   @unique
+  description String?
+  permissions String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+}
+
+model Bid {
+  id            String    @id @default(cuid()) @map("_id")
+  userId        String
+  listingId     String
+  amount        Float
+  coinsUsed     Float
+  status        BidStatus  @default(PENDING)
+  message       String?
+  expiresAt     DateTime?
+  acceptedAt    DateTime?
+  rejectedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  listing       Listing   @relation(fields: [listingId], references: [id])
+  user          User      @relation(fields: [userId], references: [id])
+
+  @@index([listingId])
+  @@index([userId])
+  @@index([status])
+}
+
+model Deal {
+  id          String    @id @default(cuid()) @map("_id")
+  sellerId    String
+  buyerId     String
+  listingId   String
+  bidId       String?
+  amount      Float
+  status      DealStatus @default(PENDING)
+  isSuccess   Boolean?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+  user        User      @relation(fields: [buyerId], references: [id])
+  listing     Listing   @relation(fields: [listingId], references: [id])  // Add this line
+  chat        Chat?
+
+  @@index([sellerId])
+  @@index([buyerId])
+  @@index([listingId])
+}
+
+enum UserRole {
+  USER
+  BUYER
+  ADMIN
+  MANAGER
+  OPERATIONS
+}
+
+enum ListingStatus {
+  PENDING
+  ACTIVE
+  SOLD
+  FAILED
+}
+
+enum BidStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum DealStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum CoinTransactionType {
+  RECHARGE
+  BID_PLACED
+  BID_REFUND
+  REFUND
+}
+
+model CoinTransaction {
+  id          String                @id @default(cuid()) @map("_id")
+  userId      String
+  amount      Float
+  type        CoinTransactionType
+  description String?
+  paymentMethod String?             // 'bank', 'credit_card', 'debit_card'
+  paymentId   String?               // Payment gateway transaction ID
+  status      String                @default("COMPLETED")
+  createdAt   DateTime              @default(now())
+  user        User                  @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([type])
+}
+
+model Chat {
+  id          String        @id @default(cuid()) @map("_id")
+  dealId      String?       @unique
+  buyerId     String
+  sellerId    String
+  listingId   String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  buyer       User          @relation("BuyerChats", fields: [buyerId], references: [id])
+  seller      User          @relation("SellerChats", fields: [sellerId], references: [id])
+  deal        Deal?         @relation(fields: [dealId], references: [id])
+  listing     Listing       @relation(fields: [listingId], references: [id])  // Add this line
+  messages    ChatMessage[]
+  blocked     Boolean       @default(false)
+  blockReason String?
+
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([listingId])
+}
+
+model ChatMessage {
+  id          String    @id @default(cuid()) @map("_id")
+  chatId     String
+  senderId   String
+  message    String?
+  latitude   Float?
+  longitude  Float?
+  isLocation Boolean   @default(false)
+  isBlocked  Boolean   @default(false)
+  blockReason String?
+  createdAt  DateTime  @default(now())
+  chat       Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender     User      @relation(fields: [senderId], references: [id])
+
+  @@index([chatId])
+  @@index([senderId])
+}
