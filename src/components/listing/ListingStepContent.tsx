@@ -1,6 +1,7 @@
 'use client'
 
 import { getDefaultBrand } from '@/lib/default-brands'
+import { DEFAULT_ICONS } from '@/lib/default-icons'
 
 interface ListingStepContentProps {
   step: number
@@ -131,76 +132,72 @@ export default function ListingStepContent({
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {categories.map((category) => {
-                // Helper function to determine if icon is an image (URL or base64)
-                const isImage = (icon: string | null | undefined): boolean => {
-                  if (!icon) return false
-                  // Check for image URLs
-                  if (icon.startsWith('http://') || icon.startsWith('https://') || icon.startsWith('/')) {
-                    return true
+                // Helper function to render icon
+                const renderCategoryIcon = () => {
+                  if (!category.icon) {
+                    // No icon, use default icon based on category name
+                    const iconName = category.name.toLowerCase()
+                    const defaultIcon = DEFAULT_ICONS.find(i => i.name === iconName)
+                    if (defaultIcon) {
+                      return (
+                        <svg className="w-8 h-8 text-[#F56A34] mx-auto mb-2" fill="currentColor" viewBox="0 0 24 24">
+                          <path d={defaultIcon.svg.replace(/<path d="|"\/>/g, '')} />
+                        </svg>
+                      )
+                    }
+                    return null
                   }
-                  // Check for base64 image data
-                  if (icon.startsWith('data:image/')) {
-                    return true
+
+                  // Check if icon is a valid image URL or data URI
+                  const isImageUrl = category.icon.startsWith('/') || 
+                                   category.icon.startsWith('http://') || 
+                                   category.icon.startsWith('https://') || 
+                                   category.icon.startsWith('data:image/')
+
+                  if (isImageUrl) {
+                    return (
+                      <img 
+                        src={category.icon} 
+                        alt={category.name} 
+                        className="w-8 h-8 object-contain mx-auto mb-2"
+                        onError={(e) => {
+                          // Fallback to default icon if image fails to load
+                          const target = e.target as HTMLImageElement
+                          target.style.display = 'none'
+                          const fallback = target.nextElementSibling as HTMLElement
+                          if (fallback) fallback.style.display = 'block'
+                        }}
+                      />
+                    )
                   }
-                  // Filter out corrupted/garbled data (long strings that look like corrupted base64)
-                  if (icon.length > 50 && icon.includes(';') && icon.includes('@')) {
-                    return false
+
+                  // Check if it's a default icon name
+                  const defaultIcon = DEFAULT_ICONS.find(i => i.name === category.icon)
+                  if (defaultIcon) {
+                    return (
+                      <svg className="w-8 h-8 text-[#F56A34] mx-auto mb-2" fill="currentColor" viewBox="0 0 24 24">
+                        <path d={defaultIcon.svg.replace(/<path d="|"\/>/g, '')} />
+                      </svg>
+                    )
                   }
-                  return false
+
+                  return null
                 }
-                
-                // Get default emoji for category
-                const getDefaultEmoji = (categoryName: string): string => {
-                  const name = categoryName.toLowerCase()
-                  if (name.includes('laptop')) return '💻'
-                  if (name.includes('mobile') || name.includes('phone')) return '📱'
-                  if (name.includes('tablet')) return '📱'
-                  if (name.includes('watch') || name.includes('smartwatch')) return '⌚'
-                  return '📦'
-                }
-                
-                const categoryIcon = category.icon
-                const isValidImage = categoryIcon && isImage(categoryIcon)
-                // Show emoji if icon exists but is not an image, and is short (likely an emoji)
-                const showEmoji = categoryIcon && !isValidImage && categoryIcon.length <= 5
-                const defaultEmoji = getDefaultEmoji(category.name)
-                
+
                 return (
                   <button
                     key={category.id}
                     onClick={() => onCategorySelect(category.id, category.name)}
-                    className={`px-4 py-3 rounded-lg border-2 transition-all flex flex-col items-center justify-center ${
+                    className={`px-4 py-3 rounded-lg border-2 transition-all ${
                       formData.category === category.id
                         ? 'border-black bg-gray-50'
                         : 'border-gray-200 hover:border-gray-400'
                     }`}
                   >
-                    <div className="mb-2 flex items-center justify-center h-12 w-12">
-                      {isValidImage ? (
-                        <img 
-                          src={categoryIcon} 
-                          alt={category.name}
-                          className="max-h-full max-w-full object-contain"
-                          onError={(e) => {
-                            // Hide image and show emoji fallback on error
-                            const target = e.target as HTMLImageElement
-                            target.style.display = 'none'
-                            const parent = target.parentElement
-                            if (parent) {
-                              const fallback = parent.querySelector('.emoji-fallback') as HTMLElement
-                              if (fallback) fallback.style.display = 'block'
-                            }
-                          }}
-                        />
-                      ) : null}
-                      <span 
-                        className={`emoji-fallback text-3xl ${isValidImage ? 'hidden' : ''}`}
-                        style={{ display: isValidImage ? 'none' : 'block' }}
-                      >
-                        {showEmoji ? categoryIcon : defaultEmoji}
-                      </span>
+                    <div className="flex items-center justify-center mb-2 min-h-[32px]">
+                      {renderCategoryIcon()}
                     </div>
-                    <h3 className="font-medium text-sm text-gray-900 text-center">{category.name}</h3>
+                    <h3 className="font-medium text-sm text-gray-900">{category.name}</h3>
                   </button>
                 )
               })}

@@ -15,12 +15,23 @@ export function requireAuth(request: NextRequest): { userId: string } {
   return user
 }
 
-export function requireAdmin(request: NextRequest) {
+export async function requireAdmin(request: NextRequest) {
   const user = getUser(request)
   if (!user) {
     throw new Error('Unauthorized')
   }
-  // We'll check if user is admin in the actual API route
+  
+  // Check if user is admin
+  const { prisma } = await import('@/lib/db')
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.userId },
+    select: { role: true },
+  })
+  
+  if (!dbUser || dbUser.role !== 'ADMIN') {
+    throw new Error('Forbidden')
+  }
+  
   return user
 }
 

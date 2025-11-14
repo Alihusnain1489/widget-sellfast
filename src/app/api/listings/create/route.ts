@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
   try {
     const user = requireAuth(request)
     const body = await request.json()
-    const { itemId, companyId, title, description, price, address, latitude, longitude, specifications, images } = body
+    const { itemId, companyId, title, description, price, address, specifications } = body
 
     if (!itemId || !companyId || !title || !description || !address) {
       return NextResponse.json(
@@ -25,12 +25,9 @@ export async function POST(request: NextRequest) {
         description,
         price: price ? parseFloat(price) : 0,
         address,
-        latitude: latitude ? parseFloat(latitude) : null,
-        longitude: longitude ? parseFloat(longitude) : null,
-        status: 'PENDING', // Changed to PENDING for admin approval
-        tempData: images && images.length > 0 ? { images } : null,
+        status: 'ACTIVE', // Auto-active for users
         specifications: {
-          create: (specifications || []).map((spec: { specificationId: string; value: string }) => ({
+          create: specifications.map((spec: { specificationId: string; value: string }) => ({
             specificationId: spec.specificationId,
             value: spec.value
           }))
